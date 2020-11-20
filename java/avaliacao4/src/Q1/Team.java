@@ -2,51 +2,79 @@ package Q1;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-public class Team extends Thread{
+public class Team extends Thread {
     List<Competitor> competitors;
-    Integer numberOfQuestions;
-    Integer index;
-    // lockable winnerToken
-    // lockable PC; must be usable by only one competitor at a time
+    Integer numberOfQuestionsToSolve;
+    Integer id;
+    Integer questionsSolved;
+    Contest contest;
+    Lock PC;
 
-    public Team(Integer index, Integer numberOfQuestions/*, winnerToken*/){
-        this.numberOfQuestions = numberOfQuestions;
-        this.index = index;
-        competitors = Arrays.asList(new Competitor(), new Competitor(), new Competitor());
-        // PC = new PC
-        System.out.println("Team " + index + " initialized");
+    public Team(Integer id, Contest contest) {
+        this.contest = contest;
+        this.numberOfQuestionsToSolve = contest.getNumberOfQuestions();
+        this.questionsSolved = 0;
+        this.id = id;
+        this.PC = new ReentrantLock();
+        this.competitors = Arrays.asList(
+                new Competitor(1, this),
+                new Competitor(2, this),
+                new Competitor(3, this)
+        );
     }
 
-    public void start(){
-        System.out.println("Team " + this.index + " started.");
-        while(this.numberOfQuestions > 0 /* and winnertoken is locked*/){
-            for(Competitor c : competitors){
-                if(!c.isSolving()){
-                    this.putCompetitorToSolve(c);
-                }
+    public void run() {
+        System.out.println("Team: " + this.id + " started");
+        try {
+            for (Competitor c : competitors) {
+                c.start();
+            }
+            for (Competitor c : competitors) {
+                c.join();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public boolean isActive() {
+        synchronized (this.contest.getWinner()) {
+            return this.contest.isRunning();
+        }
+    }
+
+    public synchronized void submitQuestion(Competitor c) {
+        synchronized (this.contest.getWinner()) {
+            if (!this.isActive() || this.numberOfQuestionsToSolve == 0)
+                return;
+
+            this.questionsSolved++;
+            this.numberOfQuestionsToSolve -= 1;
+            System.out.println("Competitor: " + c.getCompetitorId() + " Team: " + this.getTeamId() + " SOLVED: " + this.getQuestionsSolved());
+
+            if (this.numberOfQuestionsToSolve == 0) {
+                this.contest.getWinner().compareAndSet(0, this.id);
             }
         }
-        System.out.println("Team " + this.index + " ended first.");
-        //unlock this.winnerToken
-
-        for(Competitor c : competitors){
-            //stop threads
-        }
     }
 
-    private void putCompetitorToSolve(Competitor c) {
-        c.trySolveWith(/*lockable PC*/);
-        //join c;
-        this.numberOfQuestions -= 1;
+    private synchronized Integer getQuestionsSolved() {
+        return this.questionsSolved;
     }
 
-
-    public Integer getIndex() {
-        return this.index;
+    public Integer getTeamId() {
+        return this.id;
     }
 
     public Integer getNumberOfQuestionsToSolve() {
-        return this.numberOfQuestions;
+        return this.numberOfQuestionsToSolve;
     }
+
+    public int getSolvedQuestions() {
+        return contest.getNumberOfQuestions() - this.getNumberOfQuestionsToSolve();
+    }
+
 }

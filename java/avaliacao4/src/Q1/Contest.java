@@ -1,51 +1,80 @@
 package Q1;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class Contest extends Thread{
-    List<Team> teams;
-    Integer numberOfQuestions;
-    // lockable winnerToken
+public class Contest{
+    private List<Team> teams;
+    private Integer numberOfQuestions;
+    public AtomicInteger winner;
 
     public Contest(Integer numberOfTeams, Integer numberOfQuestions){
         this.teams = new ArrayList<>();
-        //this.winner = new lockable
-        for(int i = 0; i < numberOfTeams; i++)
-            this.teams.add(new Team(i, numberOfQuestions/*, winnnerToken*/));
-
+        this.winner = new AtomicInteger(0);
         this.numberOfQuestions = numberOfQuestions;
+        for(int i = 0; i < numberOfTeams; i++){
+            this.teams.add(new Team(i+1,this));
+        }
     }
 
     public void start(){
-        //should make all teams start at the same time and should watch teams to see which one ends first
         for(Team team : this.teams){
             team.start();
         }
-        //winnerToken.lock
-
-        //wait for some team unlock winnerToken
-        // lock token
 
         for(Team team : this.teams){
-            // team.stop
+            try {
+                team.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
-        getRank();
+        showRank();
     }
 
-    private void getRank() {
-        //sort teams by getQuestionsToSolve in increasing order
-        System.out.println("Team\tPosition\tSolved");
+    public boolean isRunning() {
+        return this.winner.get() == 0;
+    }
+
+    private void showRank() {
+        System.out.println("=================================================");
+        System.out.println("Team " + this.winner.get() + " finished first.");
+        System.out.println("Position\tTeam\tSolved");
+        Collections.sort(teams, (a,b) -> b.getSolvedQuestions() - a.getSolvedQuestions());
         for(int i = 0; i < teams.size(); i++){
-            System.out.println(teams.get(i).getIndex() + "\t" + i + "\t" + (numberOfQuestions - teams.get(i).getNumberOfQuestionsToSolve()));
+            System.out.println(i+1 + "\t\t\t" + teams.get(i).getTeamId() + "\t\t" + teams.get(i).getSolvedQuestions());
         }
+        System.out.println("=================================================");
+
     }
 
-    public static void main(String[] args) {
-        int N = 10; // number of teams
-        int X = 12; // number of questions
+    public static void main(String[] args) throws InterruptedException {
+        Scanner in = new Scanner(System.in);
+
+        System.out.println("How many teams are in the contest?");
+        int N = in.nextInt(); // number of teams
+        System.out.println("How many questions are in the contest?");
+        int X = in.nextInt(); // number of questions
+
         Contest contest = new Contest(N, X);
+
+        Long st = System.currentTimeMillis();
         contest.start();
+        System.out.println("opa = " + (System.currentTimeMillis() - st));
+
+        in.close();
+    }
+
+
+    public int getNumberOfQuestions() {
+        return this.numberOfQuestions;
+    }
+
+    public AtomicInteger getWinner() {
+        return this.winner;
     }
 }

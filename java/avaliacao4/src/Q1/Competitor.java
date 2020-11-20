@@ -2,18 +2,55 @@ package Q1;
 
 public class Competitor extends Thread {
 
+   private Integer competitorId;
+   private Team team;
 
-    public boolean isSolving() {
-        //return this. is running
-        return false;
+    public Competitor(Integer competitorId, Team team){
+        this.competitorId = competitorId;
+        this.team = team;
     }
 
-    public void trySolveWith(/*lockable PC*/){//run this in a thread
-        //sleep 1500 ms
+    private void solve() throws InterruptedException {
+        System.out.println("Competitor: " + competitorId + " Team: " + team.getTeamId() + " IS ALIVE");
 
-        //wait to PC be available
-        //lock PC
-        //sleep 1500 ms
-        //unlock PC
+        while(team.isActive()) {
+            this.solveOnPaper();
+            this.solveOnPc();
+        }
+
     }
+
+    private void solveOnPaper() throws InterruptedException {
+        if (!team.isActive())
+            return;
+
+        System.out.println("Competitor: " + competitorId + " Team: " + team.getTeamId() + " AT PAPER");
+        this.sleep(1500);
+    }
+
+    private void solveOnPc() throws InterruptedException {
+        this.team.PC.lock();
+        if (!team.isActive()){
+            this.team.PC.unlock();
+            return;
+        }
+        System.out.println("Competitor: " + competitorId + " Team: " + team.getTeamId() + " AT PC");
+        this.sleep(1000);
+        team.submitQuestion(this);
+        this.team.PC.unlock();
+
+    }
+
+    public Integer getCompetitorId() {
+        return competitorId;
+    }
+
+    public void run(){
+        try {
+            this.solve();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
 }
