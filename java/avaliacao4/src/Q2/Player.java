@@ -1,17 +1,19 @@
 package Q2;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Player extends Thread{
 
-    Chair chair = null;
+    AtomicBoolean chair = null;
     int index;
 
     public Player(int index){
         this.index = index;
     }
 
-    public Chair getChair(){
+    public AtomicBoolean getChair(){
         return this.chair;
     }
 
@@ -21,7 +23,7 @@ public class Player extends Thread{
 
     }
 
-    public int tryGetAChair(List<Chair> chairList){
+    public int tryGetAChair(List<AtomicBoolean> chairList){
         if(isSitting()) return 0;
 
         int N = chairList.size();

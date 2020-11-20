@@ -4,10 +4,11 @@ import javax.swing.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ChairGame {
     List<Player> players;
-    List<Chair> chairs;
+    List<AtomicBoolean> chairs;
 
 
     public ChairGame(Integer N){
@@ -16,7 +17,7 @@ public class ChairGame {
 
         for(int i = 0; i < N; i++){
             players.add(new Player(i));
-            if(i > 0) chairs.add(new Chair(i));
+            if(i > 0) chairs.add(new AtomicBoolean(false));
         }
     }
 
@@ -66,7 +67,7 @@ public class ChairGame {
         }
     }
 
-    private List<Chair> getChairs() {
+    private List<AtomicBoolean> getChairs() {
         return this.chairs;
     }
 
