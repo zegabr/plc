@@ -43,10 +43,10 @@ public class Contest{
     private void showRank() {
         System.out.println("=================================================");
         System.out.println("Team " + this.winner.get() + " finished first.");
-        System.out.println("Position\tTeam\tSolved");
+        System.out.println("Position Team Solved");
         Collections.sort(teams, (a,b) -> b.getSolvedQuestions() - a.getSolvedQuestions());
         for(int i = 0; i < teams.size(); i++){
-            System.out.println(i+1 + "\t\t\t" + teams.get(i).getTeamId() + "\t\t" + teams.get(i).getSolvedQuestions());
+            System.out.println(i+1 + "         " + teams.get(i).getTeamId() + "     " + teams.get(i).getSolvedQuestions());
         }
         System.out.println("=================================================");
 
