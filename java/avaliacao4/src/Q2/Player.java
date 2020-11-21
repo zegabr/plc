@@ -1,43 +1,57 @@
 package Q2;
 
-import java.util.List;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
-public class Player extends Thread{
+public class Player extends Thread {
+    Integer index;
+    ChairGame game;
+    AtomicBoolean chair;
 
-    AtomicBoolean chair = null;
-    int index;
-
-    public Player(int index){
-        this.index = index;
+    public Player(int i, ChairGame chairGame) {
+        index = i;
+        game = chairGame;
+        chair = null;
     }
 
-    public AtomicBoolean getChair(){
-        return this.chair;
+    public synchronized boolean haveChairsToSit() {
+        return !this.game.getChairs().isEmpty();
     }
 
-    public void leaveChair(){
-        if(chair == null) return;
-        // unlock chair
-
+    public synchronized int countChairs() {
+        return game.getChairs().size();
     }
 
-    public int tryGetAChair(List<AtomicBoolean> chairList){
-        if(isSitting()) return 0;
-
-        int N = chairList.size();
-        //get random index from 0 to N-1
-//        if(chair is locked) return 0;
-//        lock chair
-        return 1;
+    public void run() {
+        System.out.println("Player " + index + " starded.");
+        Random random = new Random();
+        while (game.isRunning()) {
+            while (!isSitting() && haveChairsToSit()) {
+                synchronized (game) {
+                    int n = countChairs();
+                    if(n == 0) break;
+                    int randomIndex = random.nextInt(n);
+                    if (countChairs() == 0) break;
+                    AtomicBoolean randomChair = game.getChairs().get(randomIndex);
+                    if (randomChair != null && !randomChair.getAndSet(true)) {
+                        chair = randomChair;//now is sitting
+                        game.removeChair(randomChair);//remove from game
+                    }
+                }
+            }
+        }
     }
 
     private boolean isSitting() {
-        return this.chair != null;
+        return chair != null;
     }
 
-    public Integer getIndex() {
-        return this.index;
+    public AtomicBoolean getChair() {
+        return chair;
+    }
+
+    public void leaveChair() {
+        chair = null;
     }
 }

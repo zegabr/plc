@@ -64,7 +64,7 @@ public class Contest{
 
         Long st = System.currentTimeMillis();
         contest.start();
-        System.out.println("opa = " + (System.currentTimeMillis() - st));
+        System.out.println("total time = " + (System.currentTimeMillis() - st));
 
         in.close();
     }
