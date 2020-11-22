@@ -4,12 +4,6 @@ import Control.Monad
 import System.IO
 import GHC.Conc.Sync
 
--- 1 maquina (o lock), contem pcoca 2k, polo 2k e quate 2k (ok)
--- N clientes do tipo PCOCA | POLO | QUATE 
-    -- cada cliente leva 1000ms pra preencher o copo com 300ml (usando a maquina, se tiver refri suficiente)
-        -- O cliente N do refrigerante X está enchendo seu copo
--- o produtor demora 1500ms pra dar refil (de 1000ml) na maquina qnd algum refri tem menos de 1000ml
-    --O refrigerante X foi reabastecido com 1000 ml, e agora possui Y ml
 
 -- se fim chega a 0 ,acabou as threads
 
@@ -23,13 +17,13 @@ waitThreads fim = do
     else
         return ()
 
-printRefil :: [Char] -> TMVar Int -> IO()
-printRefil juice value = do
-    putStrLn $ "O refrigerante "++ juice ++" foi reabastecido com 1000 ml, e agora possui "++ (show value) ++" ml"
+-- printRefil :: [Char] -> TMVar Int -> IO()
+-- printRefil juice value = do
+--     putStrLn $ "O refrigerante "++ juice ++" foi reabastecido com 1000 ml, e agora possui "++ (show value) ++" ml" -- ERROR HERE
 
-printClient :: [Char] -> Int -> IO()
-printClient juice index = do
-    putStrLn $ "O cliente "++(show index)++" do refrigerante "++ juice ++" está enchendo seu copo"
+-- printClient :: [Char] -> Int -> IO()
+-- printClient juice index = do
+--     putStrLn $ "O cliente "++(show index)++" do refrigerante "++ juice ++" está enchendo seu copo"
 
 tryRefil :: [Char] -> TMVar Int -> STM()
 tryRefil j value = do
@@ -37,7 +31,7 @@ tryRefil j value = do
     if currentValue < 1000 then do
         putTMVar value (currentValue + 1000)
         -- threadDelay 1500000 -- 1.5 sec
-        unsafeIOToSTM(printRefil j value)
+        -- unsafeIOToSTM(printRefil j value)
     else
         return()
 
@@ -66,7 +60,7 @@ tryFill j i value aliveThreads machine = do
         usingMachine <- takeTMVar machine
         putTMVar value (currentValue - 300)
         -- threadDelay 1000000 -- 1 sec
-        unsafeIOToSTM(printClient j i)
+        -- unsafeIOToSTM(printClient j i)
         
         currentAliveThreads <- readTMVar aliveThreads
         putTMVar aliveThreads (currentAliveThreads-1)
@@ -85,23 +79,26 @@ consumer "QUATE" index coca polo quate aliveThreads machine = tryFill "QUATE" in
 
 main :: IO ()
 main = do
-    hSetBuffering stdout NoBuffering
     -- initial stock
     coca    <- atomically (newTMVar 2000)
     polo    <- atomically (newTMVar 2000)
     quate   <- atomically (newTMVar 2000)
 
     -- pegar numCocaClients numPoloClients numQuateClients
-    let numCocaClients = 2
-    let numPoloClients = 1
-    let numQuateClients = 0
-    lockMachine <- atomically(newTMVar 1)
-    
-    aliveThreads <- atomically (newTMVar (numCocaClients + numPoloClients + numQuateClients))
+    numCocaClients <- getLine
+    numPoloClients <- getLine
+    numQuateClients <- getLine
 
-    forkIO(atomically(producer coca polo quate lockMachine))
-    forkIO(atomically(consumer "COCA" 1 coca polo quate aliveThreads lockMachine))
-    forkIO(atomically(consumer "COCA" 2 coca polo quate aliveThreads lockMachine))
-    forkIO(atomically(consumer "POLO" 1 coca polo quate aliveThreads lockMachine))
+    let cocanum = 5
+    let polonum = 5
+    let quatenum = 5
+    
+    aliveThreads <- atomically (newTMVar (cocanum + polonum + quatenum))
+    lockMachine <- atomically(newTMVar 1)
+
+    forkIO $ atomically $ producer coca polo quate lockMachine
+    mapM_(\x -> forkIO $ atomically $ consumer "COCA" x coca polo quate aliveThreads lockMachine) [1..cocanum]
+    mapM_(\x -> forkIO $ atomically $ consumer "POLO" x coca polo quate aliveThreads lockMachine) [1..polonum]
+    mapM_(\x -> forkIO $ atomically $ consumer "QUATE" x coca polo quate aliveThreads lockMachine) [1..quatenum]
     atomically(waitThreads aliveThreads)
     return ()
