@@ -9,8 +9,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Contest{
     private List<Team> teams;
     private Integer numberOfQuestions;
-    public AtomicInteger winner;
+    public AtomicInteger winner;// will contain an index >= 1 if some team win
 
+    /**
+     * Constructor.
+     * @param numberOfTeams
+     * @param numberOfQuestions
+     */
     public Contest(Integer numberOfTeams, Integer numberOfQuestions){
         this.teams = new ArrayList<>();
         this.winner = new AtomicInteger(0);
@@ -20,6 +25,9 @@ public class Contest{
         }
     }
 
+    /**
+     * Starts contest.
+     */
     public void start(){
         for(Team team : this.teams){
             team.start();
@@ -36,20 +44,43 @@ public class Contest{
         showRank();
     }
 
+    /**
+     * check if contest is running.
+     * @return
+     */
     public boolean isRunning() {
         return this.winner.get() == 0;
     }
 
+    /**
+     * show final rank.
+     */
     private void showRank() {
         System.out.println("=================================================");
         System.out.println("Team " + this.winner.get() + " finished first.");
         System.out.println("Position Team Solved");
-        Collections.sort(teams, (a,b) -> b.getSolvedQuestions() - a.getSolvedQuestions());
+        Collections.sort(teams, (a,b) -> b.getNumberOfQuestionsSolved() - a.getNumberOfQuestionsSolved());
         for(int i = 0; i < teams.size(); i++){
-            System.out.println(i+1 + "         " + teams.get(i).getTeamId() + "     " + teams.get(i).getSolvedQuestions());
+            System.out.println(i+1 + "         " + teams.get(i).getTeamId() + "     " + teams.get(i).getNumberOfQuestionsSolved());
         }
         System.out.println("=================================================");
 
+    }
+
+    /**
+     * Get number of questions in contest
+     * @return
+     */
+    public int getNumberOfQuestions() {
+        return this.numberOfQuestions;
+    }
+
+    /**
+     * get the atomic integer that represents the winner
+     * @return
+     */
+    public AtomicInteger getWinner() {
+        return this.winner;
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -67,14 +98,5 @@ public class Contest{
         System.out.println("total time = " + (System.currentTimeMillis() - st));
 
         in.close();
-    }
-
-
-    public int getNumberOfQuestions() {
-        return this.numberOfQuestions;
-    }
-
-    public AtomicInteger getWinner() {
-        return this.winner;
     }
 }

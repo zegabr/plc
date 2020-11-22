@@ -23,6 +23,10 @@ public class ChairGame{
         }
     }
 
+    /**
+     * start game
+     * @throws InterruptedException
+     */
     public void start() throws InterruptedException {
         System.out.println("Starting players");
         for (Player player : players){
@@ -42,6 +46,10 @@ public class ChairGame{
         }
     }
 
+    /**
+     * simulates one round
+     * @throws InterruptedException
+     */
     private void playRound() throws InterruptedException {
         preparing.lock();
 
@@ -70,6 +78,10 @@ public class ChairGame{
         preparing.unlock();
     }
 
+    /**
+     * find player without chair
+     * @return
+     */
     private Player findLooser() {
         Player looser = null;
         for (Player p : players){
@@ -82,17 +94,43 @@ public class ChairGame{
         return looser;
     }
 
+    /**
+     * make players leave all chairs
+     */
     private void makePlayersLeaveChairs() {
         for(Player player : players)
             player.leaveChair();
     }
 
+    /**
+     * check if game is running
+     * @return
+     */
     public boolean isRunning() {
         return players.size() > 1;
     }
 
+    /**
+     * return list of chairs
+     * @return
+     */
     public List<AtomicBoolean> getChairs() {
         return chairs;
+    }
+
+    /**
+     * remove one chair of the list by reference
+     * @param randomChair
+     */
+    public void removeChair(AtomicBoolean randomChair) {
+        preparing.lock();
+        synchronized (nextRound){
+            chairs.remove(randomChair);
+            if(chairs.isEmpty()) {
+                nextRound.notify();
+            }
+        }
+        preparing.unlock();
     }
 
     public static void main(String[] args) {
@@ -109,17 +147,5 @@ public class ChairGame{
         }
 
         System.out.println("Player " + chairGame.players.get(0).index + " won.");
-
-    }
-
-    public void removeChair(AtomicBoolean randomChair) {
-        preparing.lock();
-        synchronized (nextRound){
-            chairs.remove(randomChair);
-            if(chairs.isEmpty()) {
-                nextRound.notify();
-            }
-        }
-        preparing.unlock();
     }
 }

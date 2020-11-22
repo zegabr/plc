@@ -5,8 +5,6 @@ import System.IO
 import GHC.Conc.Sync
 
 
--- se fim chega a 0 ,acabou as threads
-
 -- join (will keep main from stopping)
 waitThreads :: TMVar Int -> STM ()
 waitThreads fim = do
@@ -19,18 +17,18 @@ waitThreads fim = do
 
 -- printRefil :: [Char] -> TMVar Int -> IO()
 -- printRefil juice value = do
---     putStrLn $ "O refrigerante "++ juice ++" foi reabastecido com 1000 ml, e agora possui "++ (show value) ++" ml" -- ERROR HERE
+--     putStrLn $ "O refrigerante "++ juice ++" foi reabastecido com 1000 ml, e agora possui "++ (show value) ++" ml" -- ERROR HERE caused by show in TMVar
 
 -- printClient :: [Char] -> Int -> IO()
 -- printClient juice index = do
 --     putStrLn $ "O cliente "++(show index)++" do refrigerante "++ juice ++" está enchendo seu copo"
 
-tryRefil :: [Char] -> TMVar Int -> STM()
-tryRefil j value = do
+tryRefilRefri :: [Char] -> TMVar Int -> STM()
+tryRefilRefri j value = do
     currentValue <- takeTMVar value
     if currentValue < 1000 then do
         putTMVar value (currentValue + 1000)
-        -- threadDelay 1500000 -- 1.5 sec
+        -- threadDelay 1500000 -- 1.5 sec -- ERROR HERE caused by ??
         -- unsafeIOToSTM(printRefil j value)
     else
         return()
@@ -38,43 +36,45 @@ tryRefil j value = do
 producer :: TMVar Int -> TMVar Int -> TMVar Int -> TMVar Int -> STM()
 producer coca polo quate machine = do
     ------- check coca
-    usingMachine <- takeTMVar machine
-    tryRefil "COCA" coca
-    putTMVar machine usingMachine
+    usingMachine <- takeTMVar machine -- lock machine
+    tryRefilRefri "COCA" coca
+    putTMVar machine usingMachine -- unlock machine
     ------------ check polo
     usingMachine <- takeTMVar machine
-    tryRefil "POLO" polo
+    tryRefilRefri "POLO" polo
     putTMVar machine usingMachine
     ------------- check quate
     usingMachine <- takeTMVar machine
-    tryRefil "QUATE" quate
+    tryRefilRefri "QUATE" quate
     putTMVar machine usingMachine
     -- call again infinitelly
     producer coca polo quate machine
 
 
-tryFill :: [Char] -> Int -> TMVar Int -> TMVar Int -> TMVar Int -> STM ()
-tryFill j i value aliveThreads machine = do
-    currentValue <- readTMVar value
+tryFillCup :: [Char] -> Int -> TMVar Int -> TMVar Int -> TMVar Int -> STM ()
+tryFillCup j i value aliveThreads machine = do
+    usingMachine <- takeTMVar machine -- lock machine
+    
+    currentValue <- takeTMVar value
+
     if currentValue >= 300 then do
-        usingMachine <- takeTMVar machine
         putTMVar value (currentValue - 300)
         -- threadDelay 1000000 -- 1 sec
         -- unsafeIOToSTM(printClient j i)
         
         currentAliveThreads <- readTMVar aliveThreads
-        putTMVar aliveThreads (currentAliveThreads-1)
-        
-        putTMVar machine usingMachine
-    else 
-        retry
+        putTMVar aliveThreads (currentAliveThreads-1) -- update alive threads
+        putTMVar machine usingMachine -- unlock machine
+    else do
+        putTMVar value currentValue
+        putTMVar machine usingMachine -- unlock machine
+        tryFillCup j i value aliveThreads machine
     
-
-
+    
 consumer :: [Char] -> Int-> TMVar Int -> TMVar Int -> TMVar Int -> TMVar Int -> TMVar Int -> STM()
-consumer "COCA" index coca polo quate aliveThreads machine = tryFill "COCA" index coca aliveThreads machine
-consumer "POLO" index coca polo quate aliveThreads machine = tryFill "POLO" index polo aliveThreads machine
-consumer "QUATE" index coca polo quate aliveThreads machine = tryFill "QUATE" index quate aliveThreads machine
+consumer "COCA" index coca polo quate aliveThreads machine = tryFillCup "COCA" index coca aliveThreads machine
+consumer "POLO" index coca polo quate aliveThreads machine = tryFillCup "POLO" index polo aliveThreads machine
+consumer "QUATE" index coca polo quate aliveThreads machine = tryFillCup "QUATE" index quate aliveThreads machine
 
 
 main :: IO ()
@@ -84,14 +84,10 @@ main = do
     polo    <- atomically (newTMVar 2000)
     quate   <- atomically (newTMVar 2000)
 
-    -- pegar numCocaClients numPoloClients numQuateClients
-    numCocaClients <- getLine
-    numPoloClients <- getLine
-    numQuateClients <- getLine
-
-    let cocanum = 5
-    let polonum = 5
-    let quatenum = 5
+    -- number of threads by refri
+    let cocanum = 1
+    let polonum = 2
+    let quatenum = 3
     
     aliveThreads <- atomically (newTMVar (cocanum + polonum + quatenum))
     lockMachine <- atomically(newTMVar 1)

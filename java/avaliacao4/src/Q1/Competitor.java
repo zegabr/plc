@@ -10,6 +10,11 @@ public class Competitor extends Thread {
         this.team = team;
     }
 
+    /**
+     * start competitor solving cycle.
+     * called on thread start.
+     * @throws InterruptedException
+     */
     private void solve() throws InterruptedException {
         System.out.println("Competitor: " + competitorId + " Team: " + team.getTeamId() + " IS ALIVE");
 
@@ -20,6 +25,10 @@ public class Competitor extends Thread {
 
     }
 
+    /**
+     * simulates solving on paper.
+     * @throws InterruptedException
+     */
     private void solveOnPaper() throws InterruptedException {
         if (!team.isActive())
             return;
@@ -28,6 +37,10 @@ public class Competitor extends Thread {
         this.sleep(1500);
     }
 
+    /**
+     * simulates solving on pc
+     * @throws InterruptedException
+     */
     private void solveOnPc() throws InterruptedException {
         this.team.PC.lock();
         if (!team.isActive()){
@@ -41,10 +54,17 @@ public class Competitor extends Thread {
 
     }
 
+    /**
+     * competitor id
+     * @return
+     */
     public Integer getCompetitorId() {
         return competitorId;
     }
 
+    /**
+     * start thread
+     */
     public void run(){
         try {
             this.solve();

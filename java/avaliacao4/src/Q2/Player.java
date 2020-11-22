@@ -15,14 +15,25 @@ public class Player extends Thread {
         chair = null;
     }
 
+    /**
+     * check if it has free chairs
+     * @return
+     */
     public synchronized boolean haveChairsToSit() {
         return !this.game.getChairs().isEmpty();
     }
 
+    /**
+     * count number of freee chairs
+     * @return
+     */
     public synchronized int countChairs() {
         return game.getChairs().size();
     }
 
+    /**
+     * start player cycle
+     */
     public void run() {
         System.out.println("Player " + index + " starded.");
         Random random = new Random();
@@ -43,14 +54,25 @@ public class Player extends Thread {
         }
     }
 
+    /**
+     * check if player is already sitting
+     * @return
+     */
     private boolean isSitting() {
         return chair != null;
     }
 
+    /**
+     * return player's current chair
+     * @return
+     */
     public AtomicBoolean getChair() {
         return chair;
     }
 
+    /**
+     * make player leave the chair
+     */
     public void leaveChair() {
         chair = null;
     }
