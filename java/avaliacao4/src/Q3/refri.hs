@@ -1,8 +1,8 @@
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Control.Concurrent.STM
 import Control.Monad
 import System.IO
+import GHC.Conc.Sync
 
 -- 1 maquina (o lock), contem pcoca 2k, polo 2k e quate 2k (ok)
 -- N clientes do tipo PCOCA | POLO | QUATE 
@@ -12,8 +12,6 @@ import System.IO
     --O refrigerante X foi reabastecido com 1000 ml, e agora possui Y ml
 
 -- se fim chega a 0 ,acabou as threads
-
-
 
 -- join (will keep main from stopping)
 waitThreads :: TMVar Int -> STM ()
@@ -36,10 +34,10 @@ printClient juice index = do
 tryRefil :: [Char] -> TMVar Int -> STM()
 tryRefil j value = do
     currentValue <- takeTMVar value
-    if currentValue < 1000 then
+    if currentValue < 1000 then do
         putTMVar value (currentValue + 1000)
-        --sleep 1500ms
-        atomically(printRefil j value)
+        -- threadDelay 1500000 -- 1.5 sec
+        unsafeIOToSTM(printRefil j value)
     else
         return()
 
@@ -67,8 +65,8 @@ tryFill j i value aliveThreads machine = do
     if currentValue >= 300 then do
         usingMachine <- takeTMVar machine
         putTMVar value (currentValue - 300)
-        -- sleep 1000ms
-        atomically(printClient j i)
+        -- threadDelay 1000000 -- 1 sec
+        unsafeIOToSTM(printClient j i)
         
         currentAliveThreads <- readTMVar aliveThreads
         putTMVar aliveThreads (currentAliveThreads-1)
