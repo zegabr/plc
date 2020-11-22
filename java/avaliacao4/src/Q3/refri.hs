@@ -16,16 +16,16 @@ import System.IO
 
 
 -- join (will keep main from stopping)
-waitThreads :: TMVar Int -> STM ()
+waitThreads :: MVar Int -> IO ()
 waitThreads fim = do
-    f <- takeTMVar fim
+    f <- takeMVar fim
     if (f > 0) then do
-        putTMVar fim f
+        putMVar fim f
         waitThreads fim
     else
         return ()
 
-printRefil :: [Char] -> TMVar Int -> IO()
+printRefil :: [Char] -> MVar Int -> IO()
 printRefil juice value = do
     putStrLn $ "O refrigerante "++ juice ++" foi reabastecido com 1000 ml, e agora possui "++ (show value) ++" ml"
 
@@ -33,53 +33,53 @@ printClient :: [Char] -> Int -> IO()
 printClient juice index = do
     putStrLn $ "O cliente "++(show index)++" do refrigerante "++ juice ++" está enchendo seu copo"
 
-tryRefil :: [Char] -> TMVar Int -> STM()
+tryRefil :: [Char] -> MVar Int -> IO()
 tryRefil j value = do
-    currentValue <- takeTMVar value
+    currentValue <- readMVar value
     if currentValue < 1000 then
-        putTMVar value (currentValue + 1000)
+        putMVar value (currentValue + 1000)
         --sleep 1500ms
-        atomically(printRefil j value)
+        printRefil j value
     else
         return()
 
-producer :: TMVar Int -> TMVar Int -> TMVar Int -> TMVar Int -> STM()
+producer :: MVar Int -> MVar Int -> MVar Int -> MVar Int -> IO()
 producer coca polo quate machine = do
     ------- check coca
-    usingMachine <- takeTMVar machine
+    usingMachine <- takeMVar machine
     tryRefil "COCA" coca
-    putTMVar machine usingMachine
+    putMVar machine usingMachine
     ------------ check polo
-    usingMachine <- takeTMVar machine
+    usingMachine <- takeMVar machine
     tryRefil "POLO" polo
-    putTMVar machine usingMachine
+    putMVar machine usingMachine
     ------------- check quate
-    usingMachine <- takeTMVar machine
+    usingMachine <- takeMVar machine
     tryRefil "QUATE" quate
-    putTMVar machine usingMachine
+    putMVar machine usingMachine
     -- call again infinitelly
     producer coca polo quate machine
 
 
-tryFill :: [Char] -> Int -> TMVar Int -> TMVar Int -> TMVar Int -> STM ()
+tryFill :: [Char] -> Int -> MVar Int -> MVar Int -> MVar Int -> IO ()
 tryFill j i value aliveThreads machine = do
-    currentValue <- readTMVar value
+    currentValue <- readMVar value
     if currentValue >= 300 then do
-        usingMachine <- takeTMVar machine
-        putTMVar value (currentValue - 300)
+        usingMachine <- takeMVar machine
+        putMVar value (currentValue - 300)
         -- sleep 1000ms
-        atomically(printClient j i)
+        printClient j i
         
-        currentAliveThreads <- readTMVar aliveThreads
-        putTMVar aliveThreads (currentAliveThreads-1)
+        currentAliveThreads <- readMVar aliveThreads
+        putMVar aliveThreads (currentAliveThreads-1)
         
-        putTMVar machine usingMachine
+        putMVar machine usingMachine
     else 
-        retry
+        tryFill j i value aliveThreads machine
     
 
 
-consumer :: [Char] -> Int-> TMVar Int -> TMVar Int -> TMVar Int -> TMVar Int -> TMVar Int -> STM()
+consumer :: [Char] -> Int-> MVar Int -> MVar Int -> MVar Int -> MVar Int -> MVar Int -> IO()
 consumer "COCA" index coca polo quate aliveThreads machine = tryFill "COCA" index coca aliveThreads machine
 consumer "POLO" index coca polo quate aliveThreads machine = tryFill "POLO" index polo aliveThreads machine
 consumer "QUATE" index coca polo quate aliveThreads machine = tryFill "QUATE" index quate aliveThreads machine
@@ -89,21 +89,21 @@ main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
     -- initial stock
-    coca    <- atomically (newTMVar 2000)
-    polo    <- atomically (newTMVar 2000)
-    quate   <- atomically (newTMVar 2000)
+    coca    <- newMVar 2000
+    polo    <- newMVar 2000
+    quate   <- newMVar 2000
 
     -- pegar numCocaClients numPoloClients numQuateClients
     let numCocaClients = 2
     let numPoloClients = 1
     let numQuateClients = 0
-    lockMachine <- atomically(newTMVar 1)
+    lockMachine <- newMVar 1
     
-    aliveThreads <- atomically (newTMVar (numCocaClients + numPoloClients + numQuateClients))
+    aliveThreads <- newMVar (numCocaClients + numPoloClients + numQuateClients)
 
-    forkIO(atomically(producer coca polo quate lockMachine))
-    forkIO(atomically(consumer "COCA" 1 coca polo quate aliveThreads lockMachine))
-    forkIO(atomically(consumer "COCA" 2 coca polo quate aliveThreads lockMachine))
-    forkIO(atomically(consumer "POLO" 1 coca polo quate aliveThreads lockMachine))
-    atomically(waitThreads aliveThreads)
+    forkIO(producer coca polo quate lockMachine)
+    forkIO(consumer "COCA" 1 coca polo quate aliveThreads lockMachine)
+    forkIO(consumer "COCA" 2 coca polo quate aliveThreads lockMachine)
+    forkIO(consumer "POLO" 1 coca polo quate aliveThreads lockMachine)
+    waitThreads aliveThreads
     return ()
